@@ -402,7 +402,7 @@ async function fetchEmailsFromHimalaya(limit = 50, folder = 'INBOX'): Promise<an
 async function fetchEmailBody(msgId: number): Promise<string> {
   try {
     const { stdout } = await execAsync(
-      `himalaya message read ${msgId} --output text 2>/dev/null`,
+      `himalaya message read ${msgId} 2>/dev/null`,
       { timeout: 10000 }
     );
     return stdout.trim();
