@@ -3,8 +3,12 @@ import { AppState } from './types';
 export const DEFAULT_STATE: AppState = {
   theme: 'dark',
   user: { name: 'Leo' },
+  hermesStatus: 'idle',
+  hermesConfidence: 'high',
+  daemonConnected: false,
+  liveLogs: [],
   emails: [
-    { id: 'mail-1', sender: 'Lucas Bernard', senderEmail: 'lucas@atome.io', subject: 'Contrat de maintenance VPS', body: 'Bonjour Leo,\n\nVoici le contrat de maintenance modifié pour le serveur VPS. Peux-tu le relire et me dire si tout est OK pour toi ? Il y a quelques clauses sur les heures de support le week-end.\n\nMerci,\nLucas', date: '2026-06-17T09:12:00Z', read: false, starred: true, folder: 'INBOX', category: 'important' },
+    { id: 'mail-1', sender: 'Lucas Bernard', senderEmail: 'lucas@atome.io', subject: 'Contrat de maintenance VPS', body: 'Bonjour Leo,\n\nVoici le contrat de maintenance modifié pour le serveur VPS. Peux-tu le relire et me dire si tout est OK pour toi ? Il y a quelques clauses sur les heures de support le week-end.\n\nMerci,\nLucas', date: '2026-06-17T09:12:00Z', read: false, starred: true, folder: 'INBOX', category: 'important', attachments: [{ name: 'Contrat_VPS_2026_v2.pdf', size: '245 KB', type: 'pdf' }, { name: 'SLA_annexe.docx', size: '68 KB', type: 'docx' }] },
     { id: 'mail-2', sender: 'Support Boubane', senderEmail: 'support@boubane.io', subject: 'Virement mensuel reçu', body: 'Bonjour,\n\nNous vous confirmons avoir bien reçu votre virement pour le plan Pro de Boubane (votre abonnement mensuel).\n\nCordialement,\nL\'équipe Support', date: '2026-06-16T15:45:00Z', read: true, starred: false, folder: 'INBOX', category: 'finance' },
     { id: 'mail-3', sender: 'Sophie Martin', senderEmail: 'sophie.m@solutions.com', subject: 'Demande de devis - Refactoring site', body: 'Bonjour,\n\nJe souhaiterais obtenir un devis rapide pour la refonte complète de notre landing page d\'entreprise d\'ici fin juillet. Pouvons-nous prévoir un appel de calage vendredi ?\n\nCordialement,\nSophie Martin', date: '2026-06-15T11:20:00Z', read: false, starred: false, folder: 'INBOX', category: 'business' },
     { id: 'mail-4', sender: 'Github Alerts', senderEmail: 'noreply@github.com', subject: '[Security] Alert on dependencies', body: 'One of your dependencies has a known critical vulnerability. Please run "npm audit fix" to resolve the issue as soon as possible on your local workspace.', date: '2026-06-14T08:00:00Z', read: true, starred: false, folder: 'INBOX', category: 'update' }

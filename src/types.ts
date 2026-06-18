@@ -1,3 +1,9 @@
+export type EmailAttachment = {
+  name: string;
+  size: string;
+  type: string;
+};
+
 export type Email = {
   id: string;
   sender: string;
@@ -14,6 +20,7 @@ export type Email = {
   aiRecommendation?: string;
   aiDraft?: string;
   aiSummary?: string;
+  attachments?: EmailAttachment[];
 };
 
 export type AppFile = {
@@ -70,6 +77,32 @@ export type ChatMessage = {
   date: string;
 };
 
+export type HermesConfidence = 'high' | 'medium' | 'low';
+
+export type AutoRule = {
+  id: string;
+  trigger: string;
+  action: string;
+  active: boolean;
+};
+
+export type AutoConfig = {
+  enabled: boolean;
+  sort: boolean;
+  replyDraft: boolean;
+  pollInterval: number;
+  rules: AutoRule[];
+  logs: { date: string; text: string; type: string }[];
+};
+
+export type WSMessage =
+  | { type: 'status'; daemonConnected: boolean }
+  | { type: 'log'; text: string; status: string; date: string }
+  | { type: 'task_alert'; task: any }
+  | { type: 'metrics_update'; metrics: any }
+  | { type: 'hermes_action'; action: string; mailId?: string; details?: string }
+  | { type: 'mail_received'; mail: Email };
+
 export type AppState = {
   theme: 'light' | 'dark';
   user: { name: string };
@@ -80,6 +113,10 @@ export type AppState = {
   clients: Client[];
   webHistory: any[];
   activityLogs: ActivityLog[];
-  autoConfig: any;
+  autoConfig: AutoConfig;
   chatMessages: ChatMessage[];
+  hermesStatus: 'idle' | 'thinking' | 'ready' | 'error';
+  hermesConfidence: HermesConfidence;
+  daemonConnected: boolean;
+  liveLogs: { text: string; status: string; date: string }[];
 };

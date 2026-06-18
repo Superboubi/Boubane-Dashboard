@@ -147,58 +147,58 @@ export function Kanban({ state, updateState, navigateToChat }: { state: AppState
   };
 
   return (
-    <div className="p-4 md:p-8 h-full flex flex-col min-w-0 max-w-full mx-auto animate-in fade-in bg-[var(--bg)]">
+    <div className="p-4 md:p-8 h-full flex flex-col min-w-0 max-w-full mx-auto animate-stream-in">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 shrink-0 gap-4">
          <div>
            <h1 className="text-2xl font-bold text-[var(--text)] flex items-center gap-2">
-             <LayoutGrid className="w-6 h-6 text-[var(--accent)]" /> Trello Workspace
+             <LayoutGrid className="w-6 h-6 text-[var(--accent)]" /> Kanban
            </h1>
            <p className="text-sm text-[var(--text-muted)] mt-1">
-             Gérez vos projets comme sur Trello avec drag-and-drop, checklists interactives et automatisation intelligente.
+             Drag & drop, checklists, et automatisation Hermes.
            </p>
          </div>
          <div className="flex items-center gap-3">
            <button 
              onClick={() => setShowAgentPanel(!showAgentPanel)}
-             className={`px-4 py-2 border border-[var(--accent)] rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${showAgentPanel ? 'bg-[var(--accent)] text-[var(--bg)] font-semibold' : 'bg-[var(--accent-glow)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--bg)]'}`}
+             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${showAgentPanel ? 'bg-[var(--accent)] text-[var(--bg)]' : 'glass text-[var(--accent)] hover:bg-[var(--accent-glow)]'}`}
            >
-             <Bot className="w-4 h-4 text-xs" /> Agent intelligent Hermes
+             <Bot className="w-4 h-4" /> Hermes
            </button>
-           <button onClick={() => setNewTaskCol('todo')} className="px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm font-semibold">
-             <Plus className="w-4 h-4" /> Créer une carte
+           <button onClick={() => setNewTaskCol('todo')} className="px-4 py-2 bg-[var(--accent)] text-[var(--bg)] rounded-xl text-sm font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center gap-2 shadow-sm cursor-pointer active:scale-95">
+             <Plus className="w-4 h-4" /> Créer
            </button>
          </div>
       </div>
 
       {/* AI Assistant Banner */}
       {showAgentPanel && (
-        <div className="mb-6 p-5 bg-[var(--bg-surface)] border border-[var(--accent)]/50 rounded-xl relative overflow-hidden animate-in slide-in-from-top-2 flex items-start gap-4 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-[var(--accent-glow)] flex items-center justify-center shrink-0 border border-[var(--accent)]/30 text-[var(--accent)]">
+        <div className="mb-6 glass rounded-2xl p-5 relative overflow-hidden animate-stream-in flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-[var(--accent-glow)] flex items-center justify-center shrink-0 border border-[var(--accent)]/30 text-[var(--accent)]">
              <Sparkles className="w-5 h-5" />
           </div>
           <div className="flex-1">
-             <h3 className="font-semibold text-[var(--text)] text-sm mb-1 flex items-center gap-2">
+             <h3 className="font-bold text-[var(--text)] text-sm mb-1 flex items-center gap-2">
                Génération Auto-Magique par Hermes
              </h3>
              <p className="text-sm text-[var(--text-muted)] mb-3 max-w-3xl leading-relaxed">
-               L'agent surveille en continu ce tableau ainsi que vos e-mails de travail. Il peut instantanément générer vos cartes, préparer vos sous-tâches ou attribuer les priorités pour vous délester du travail de gestion.
+               L'agent surveille en continu ce tableau ainsi que vos e-mails. Il peut instantanément générer des cartes, préparer des sous-tâches ou attribuer les priorités.
              </p>
              <div className="flex gap-3">
                <button 
                  onClick={generateAIStory}
                  disabled={isAgentThinking}
-                 className="px-4 py-2 bg-[var(--accent)] text-[var(--bg)] rounded-md text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50"
+                 className="px-4 py-2 bg-[var(--accent)] text-[var(--bg)] rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
                >
-                 {isAgentThinking ? <span className="animate-pulse flex items-center gap-2"><Bot className="w-4 h-4 animate-bounce" /> Analyse opérationnelle...</span> : 'Générer des cartes de travail'}
+                 {isAgentThinking ? <span className="animate-pulse flex items-center gap-2"><Bot className="w-4 h-4 animate-bounce" /> Analyse...</span> : 'Générer des cartes'}
                </button>
              </div>
           </div>
         </div>
       )}
 
-      {/* Trello Board Grid */}
-      <div className="flex-1 flex gap-6 overflow-x-auto pb-4 custom-scrollbar select-none">
+      {/* Board Grid */}
+      <div className="flex-1 flex gap-6 overflow-x-auto pb-4 select-none">
         {columns.map(col => {
           const tasks = state.kanban.filter(t => t.column === col);
           const isOver = draggedOverCol === col;
@@ -209,33 +209,33 @@ export function Kanban({ state, updateState, navigateToChat }: { state: AppState
               onDragOver={(e) => handleDragOver(e, col)}
               onDragLeave={() => setDraggedOverCol(null)}
               onDrop={(e) => handleDrop(e, col)}
-              className={`w-80 shrink-0 flex flex-col bg-[var(--bg-surface-2)] rounded-xl border-2 transition-all duration-200 ${isOver ? 'border-[var(--accent)] bg-[var(--bg-surface-2)]/90 scale-[1.01]' : 'border-[var(--border)] overflow-hidden'}`}
+              className={`w-80 shrink-0 flex flex-col glass rounded-2xl border transition-all duration-300 ${isOver ? 'border-[var(--accent)] scale-[1.01] shadow-lg shadow-[var(--accent-glow)]' : 'border-[var(--border)]'}`}
             >
               {/* List Header */}
-              <div className="p-3 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-between cursor-default">
+              <div className="p-3 border-b border-[var(--border)] flex items-center justify-between cursor-default bg-[var(--bg-surface)] rounded-t-2xl">
                  <h3 className="font-bold text-sm text-[var(--text)] flex items-center gap-2 capitalize">
-                   <span className="w-2 h-2 rounded-full bg-[var(--text-muted)]" />
+                   <span className={`w-2 h-2 rounded-full ${col === 'todo' ? 'bg-[var(--hermes-amber)]' : col === 'doing' ? 'bg-[var(--accent)]' : 'bg-[var(--hermes-emerald)]'}`} />
                    {titles[col]}
                  </h3>
-                 <span className="text-xs bg-[var(--bg)] border border-[var(--border)] px-2.5 py-0.5 rounded-full text-[var(--text-muted)] font-mono font-bold">
+                 <span className="text-xs glass px-2.5 py-0.5 rounded-full text-[var(--text-muted)] font-mono font-bold">
                    {tasks.length}
                  </span>
               </div>
 
               {/* Cards Container */}
-              <div className="flex-1 p-3 overflow-y-auto space-y-3 min-h-[150px]">
+              <div className="flex-1 p-3 overflow-y-auto space-y-3 min-h-[150px] scrollbar-hide">
                 {tasks.map(task => {
                   const checklistTotal = task.checklist?.length || 0;
                   const checklistDone = task.checklist?.filter(item => item.done).length || 0;
                   const percentComplete = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
                   
                   return (
-                    <div 
-                      key={task.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, task.id)}
-                      onClick={() => setSelectedTask(task)}
-                      className={`bg-[var(--bg-surface)] p-4 rounded-lg shadow-sm border transition-all duration-200 cursor-grab active:cursor-grabbing hover:shadow hover:-translate-y-0.5 relative group ${draggedItem === task.id ? 'opacity-30 border-dashed border-[var(--text-muted)]' : 'border-[var(--border)] hover:border-[var(--text-muted)]'}`}
+                     <div 
+                       key={task.id}
+                       draggable
+                       onDragStart={(e) => handleDragStart(e, task.id)}
+                       onClick={() => setSelectedTask(task)}
+                       className={`glass-strong p-4 rounded-xl transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:shadow-lg relative group organic-card ${draggedItem === task.id ? 'opacity-30 border-dashed border-[var(--text-muted)]' : 'border-[var(--border)]'}`}
                     >
                        {/* Labels / Row 1 */}
                        <div className="flex justify-between items-start mb-2">
@@ -292,7 +292,7 @@ export function Kanban({ state, updateState, navigateToChat }: { state: AppState
                 
                 {/* Inline Card Creation */}
                 {newTaskCol === col ? (
-                  <div className="bg-[var(--bg-surface)] p-3.5 rounded-lg border-2 border-[var(--accent)] shadow-sm animate-in zoom-in-95 duration-100">
+                  <div className="glass-strong p-3.5 rounded-xl border-2 border-[var(--accent)] shadow-sm animate-stream-in">
                     <input 
                       autoFocus
                       type="text" 
@@ -314,8 +314,8 @@ export function Kanban({ state, updateState, navigateToChat }: { state: AppState
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setNewTaskCol(col)} className="w-full py-2.5 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)] transition-all ease-out flex items-center gap-2 group justify-center border border-dashed border-[var(--border)]">
-                    <Plus className="w-4.5 h-4.5 text-[var(--text-muted)] group-hover:text-[var(--text)]" /> Ajouter une carte
+                  <button onClick={() => setNewTaskCol(col)} className="w-full py-2.5 rounded-2xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)] transition-all flex items-center gap-2 group justify-center border border-dashed border-[var(--border)]">
+                    <Plus className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text)]" /> Ajouter une carte
                   </button>
                 )}
               </div>
@@ -327,23 +327,23 @@ export function Kanban({ state, updateState, navigateToChat }: { state: AppState
       {/* Trello Card Detail Modal overlay */}
       {selectedTask && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="glass-strong border border-[var(--border)] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-stream-in">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg-surface-2)]">
+            <div className="px-6 py-4 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg-surface)]">
                <div className="flex items-center gap-2.5 text-[var(--text)]">
                  <LayoutGrid className="w-4 h-4 text-[var(--accent)]" />
                  <span className="font-bold text-xs uppercase tracking-widest text-[var(--text-muted)]">Détail du ticket</span>
                </div>
                <button 
                  onClick={() => setSelectedTask(null)}
-                 className="p-1.5 hover:bg-[var(--bg-hover)] rounded-full transition-colors text-[var(--text-muted)] hover:text-[var(--text)]"
+                 className="p-1.5 hover:bg-[var(--bg-hover)] rounded-full transition-colors text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
                >
                  <X className="w-5 h-5" />
                </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-[var(--text)]">
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-[var(--text)] scrollbar-hide">
                {/* Card Title */}
                <div className="space-y-1">
                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Titre de la carte</label>
@@ -484,18 +484,18 @@ export function Kanban({ state, updateState, navigateToChat }: { state: AppState
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-surface-2)] flex justify-between items-center">
+            <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-surface)] backdrop-blur-md flex justify-between items-center">
               <button 
                 onClick={() => deleteCard(selectedTask.id)}
-                className="px-4 py-2 text-xs font-semibold bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold bg-[#422d2d]/50 text-[var(--error)] border border-[var(--error)]/30 rounded-xl hover:bg-[var(--error)] hover:text-white transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
-                <Trash2 className="w-3.5 h-3.5" /> Supprimer la carte
+                <Trash2 className="w-3.5 h-3.5" /> Supprimer
               </button>
               <button 
                 onClick={() => setSelectedTask(null)}
-                className="px-5 py-2 text-xs font-bold bg-[var(--text)] text-[var(--bg)] rounded-xl hover:opacity-90 transition-opacity"
+                className="px-5 py-2 text-xs font-bold bg-[var(--accent)] text-[var(--bg)] rounded-xl hover:bg-[var(--accent-hover)] transition-all cursor-pointer active:scale-95"
               >
-                Fermer & Sauvegarder
+                Fermer
               </button>
             </div>
           </div>
