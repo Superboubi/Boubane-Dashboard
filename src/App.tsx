@@ -105,7 +105,7 @@ export default function App() {
         </div>
 
         {/* Dynamic View */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={`flex-1 min-h-0 ${activeTab === 'emails' || activeTab === 'kanban' || activeTab === 'calendar' || activeTab === 'activity' ? 'flex flex-col h-full overflow-hidden' : 'overflow-y-auto'}`}>
           {activeTab === 'dashboard' && <Dashboard state={state} setActiveTab={setActiveTab} updateState={updateState} />}
           {activeTab === 'emails' && <Emails state={state} updateState={updateState} navigateToChat={() => setActiveTab('activity')} />}
           {activeTab === 'files' && <Files state={state} updateState={updateState} chatNavigate={chatNavigate} />}
@@ -118,7 +118,7 @@ export default function App() {
           {activeTab === 'settings' && <Settings state={state} updateState={updateState} />}
           {activeTab === 'auto-reply' && <AutoReply state={state} updateState={updateState} />}
           {activeTab === 'business' && <Business state={state} />}
-          {activeTab === 'site' && <Site state={state} />}
+          {activeTab === 'site' && <Site state={state} updateState={updateState} />}
         </div>
       </main>
     </div>

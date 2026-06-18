@@ -127,6 +127,342 @@ async function startServer() {
     return res.json(latestMetrics);
   });
 
+  // ==========================================
+  // REAL-TIME INTEGRATED EMAIL AI ENDPOINT (GEMINI-POWERED)
+  // ==========================================
+  app.post("/api/mail/ai", async (req, res) => {
+    const { action, emailSubject, emailBody, emailSender, mood, draftContent, userInstructions, emails, message } = req.body;
+    
+    if (!action) {
+      return res.status(400).json({ error: "L'action est requise." });
+    }
+
+    const gemini = getGeminiClient();
+    if (!gemini) {
+      console.log("⚠️ GEMINI_API_KEY non configurée pour l'IA d'emails. Utilisation du fallback.");
+      
+      if (action === "summarize") {
+        const bulletPoints = [
+          `Sujet principal : "${emailSubject || 'Sans objet'}"`,
+          `Expéditeur ciblé : ${emailSender || 'Inconnu'}`,
+          `Synthèse : Ce courriel requiert une lecture attentive pour identifier les livrables d'affaires associés.`,
+          `Statut : À traiter prochainement.`
+        ];
+        return res.json({ 
+          success: true, 
+          summary: `**[Mode d'évaluation hors-ligne]** Clé Gemini non configurée.\n\n- ${bulletPoints.join('\n- ')}\n\n*Configurez votre clé d'API dans Settings > Secrets pour activer l'IA de production !*`,
+          simulated: true 
+        });
+      } else if (action === "reply") {
+        const text = `Bonjour,\n\nJ'accuse bonne réception de votre message concernant "${emailSubject || 'notre projet'}".\n\nJ'analyse l'ensemble des points mentionnés et reviendrai vers vous pour fixer un créneau d'échange.\n\nTrès cordialement,\nLeo`;
+        return res.json({ 
+          success: true, 
+          reply: text,
+          simulated: true 
+        });
+      } else if (action === "classify") {
+        return res.json({
+          success: true,
+          category: "important",
+          sentiment: "neutre",
+          urgency: "moyenne",
+          recommendedAction: "Vérifier les priorités et rédiger une réponse rapide d'ici demain.",
+          simulated: true
+        });
+      } else if (action === "rewrite") {
+        const cleanedDraft = draftContent ? `${draftContent}\n\nCordialement,\nLeo` : "Brouillon indisponible.";
+        return res.json({
+          success: true,
+          reply: cleanedDraft,
+          simulated: true 
+        });
+      } else if (action === "copilot") {
+        const msgClean = (message || "").toLowerCase();
+        let replyText = "";
+        
+        if (msgClean.includes("résum") || msgClean.includes("synthè") || msgClean.includes("boîte")) {
+          replyText = `### Synthèse globale de votre boîte de réception
+
+Voici un résumé automatique des courriels marquants actuellement dans votre boîte :
+
+1. **Lucas (Contrat de maintenance VPS)** ([Action: select-email|mail-1|Contrat VPS]) : Clauses de week-end modifiées, retour attendu d'ici demain.
+2. **Sophie Martin (Devis refactoring)** ([Action: select-email|mail-2|Devis Refactoring]) : Prospect chaud demandant une refonte de landing page d'ici fin juillet + demande de point téléphonique.
+3. **Support Technique (Confirmation Virement)** ([Action: select-email|mail-3|Virement mensuel]) : Reçu annuel pour le plan Pro.
+4. **GitHub Security Alerts (Alerte Vulnérabilité)** ([Action: select-email|mail-4|GitHub Security]) : Alerte de vulnérabilité de dépendances nécessitant un correctif.
+
+Astuce : Cliquez sur les boutons ci-dessus pour ouvrir le mail et consulter la proposition de réponse automatique pré-rédigée.`;
+        } else if (msgClean.includes("urg") || msgClean.includes("lucas") || msgClean.includes("action") || msgClean.includes("prior")) {
+          replyText = `### Actions de priorité haute détectées
+
+D’après l’analyse, vous avez **2 dossiers** exigeant une intervention rapide :
+
+*   **Lucas (Contrat VPS)** : Il attend une validation sur le support d'ici demain. 
+    [Action: select-email|mail-1|Ouvrir le mail de Lucas]
+*   **Vérification de Sécurité (GitHub)** : Alerte de vulnérabilité de dépendance.
+    [Action: select-email|mail-4|Ouvrir l'alerte GitHub]
+
+Vous pouvez cliquer sur ces boutons pour accéder directement aux courriels concernés.`;
+        } else if (msgClean.includes("prospect") || msgClean.includes("devis") || msgClean.includes("business") || msgClean.includes("argent")) {
+          replyText = `### Opportunités Client & Business
+
+Nous avons détecté une opportunité commerciale très intéressante de **Sophie Martin** :
+*   Elle souhaite effectuer la refonte de leur landing page d'ici fin juillet.
+*   Elle propose d'en discuter ce vendredi par téléphone.
+
+[Action: select-email|mail-2|Ouvrir l'opportunité de Sophie Martin]
+La proposition de réponse automatique est prête pour lui confirmer votre disponibilité.`;
+        } else {
+          replyText = `Bonjour Leo ! Je suis votre assistant de messagerie.
+
+Je parcours vos e-mails pour vous aider à piloter votre activité sans effort.
+
+Voici ce que vous pouvez me demander :
+*   « Fais-moi un résumé de ma boîte »
+*   « Quelles sont mes actions urgentes ? »
+*   « Ai-je des opportunités de devis de la part de clients ? »
+
+Comment puis-je vous assister aujourd'hui ?`;
+        }
+        
+        return res.json({
+          success: true,
+          reply: replyText,
+          simulated: true
+        });
+      } else if (action === "auto-process") {
+        const sub = (emailSubject || "").toLowerCase();
+        let category = "none";
+        let urgency = "moyenne";
+        let sentiment = "neutre";
+        let recommendedAction = "Prendre connaissance du mail et répondre.";
+        let aiSummary = "";
+        let aiDraft = "";
+
+        if (sub.includes("contrat") || sub.includes("maintenance")) {
+          category = "important";
+          urgency = "haute";
+          sentiment = "neutre";
+          recommendedAction = "Valider les heures de support de week-end avec Lucas.";
+          aiSummary = "**Points clés :**\n- Analyse du contrat de maintenance VPS modifié.\n- Clauses sur les horaires de week-end.\n- Lucas attend une approbation rapide.";
+          aiDraft = "Bonjour Lucas,\n\nMerci pour l'envoi du contrat VPS modifié.\n\nJe vais examiner attentivement les clauses concernant les heures de support le week-end et je reviens vers toi rapidement d'ici demain pour te confirmer si tout est en ordre.\n\nCordialement,\nLeo";
+        } else if (sub.includes("virement") || sub.includes("mensuel") || sub.includes("facture") || sub.includes("reçu")) {
+          category = "finance";
+          urgency = "basse";
+          sentiment = "positif";
+          recommendedAction = "Classer le reçu pour l'abonnement Boubane Pro. Aucune autre action requise.";
+          aiSummary = "**Points clés :**\n- Confirmation de réception de virement pour le plan Pro de Boubane.\n- Aucune action supplémentaire requise de notre part.";
+          aiDraft = "Bonjour Support Boubane,\n\nC'est parfait, je vous remercie pour cette confirmation de réception de notre paiement mensuel.\n\nCordialement,\nLeo";
+        } else if (sub.includes("devis") || sub.includes("refactoring") || sub.includes("site")) {
+          category = "business";
+          urgency = "haute";
+          sentiment = "positif";
+          recommendedAction = "Préparer l'estimation budgétaire et confirmer le rendez-vous téléphonique du vendredi.";
+          aiSummary = "**Points clés :**\n-Sophie Martin souhaite une refonte complète de leur landing page d'ici fin juillet.\n-Elle propose un rendez-vous téléphonique ce vendredi pour caler les modalités.";
+          aiDraft = "Bonjour Sophie,\n\nC'est avec grand plaisir que je prends note de votre demande de devis pour le refactoring de votre site.\n\nAméliorer votre landing page d'ici fin juillet est tout à fait faisable. Je serai disponible ce vendredi pour notre appel de cadrage afin d'affiner votre cahier des charges.\n\nBien cordialement,\nLeo";
+        } else if (sub.includes("security") || sub.includes("alert") || sub.includes("vulnerability") || sub.includes("dependenc")) {
+          category = "update";
+          urgency = "haute";
+          sentiment = "négatif";
+          recommendedAction = "Entrer dans le terminal et exécuter 'npm audit fix' pour corriger les alertes de dépendances.";
+          aiSummary = "**Points clés :**\n- Alerte de sécurité de GitHub pour une vulnérabilité critique.\n- Nécessité d'appliquer 'npm audit fix' rapidement.";
+          aiDraft = "Bonjour,\n\nJ'accuse réception de cette notification de sécurité.\n\nJe vais planifier le correctif aujourd'hui même avec un audit npm pour sécuriser nos dépendances.\n\nCordialement,\nLeo";
+        } else {
+          category = "update";
+          urgency = "moyenne";
+          sentiment = "neutre";
+          recommendedAction = "Lire le message et répondre de manière appropriée.";
+          aiSummary = `**Points clés :**\n- Message reçu de ${emailSender || 'Inconnu'}.\n- Objet : "${emailSubject || 'Sans objet'}".`;
+          aiDraft = `Bonjour,\n\nJ'accuse réception de votre courriel concernant "${emailSubject || 'notre projet'}".\n\nJe vais analyser vos retours et j'y répondrai de manière complète dans les meilleurs délais.\n\nCordialement,\nLeo`;
+        }
+
+        return res.json({
+          success: true,
+          category,
+          sentiment,
+          urgency,
+          recommendedAction,
+          aiSummary,
+          aiDraft,
+          simulated: true
+        });
+      }
+      return res.status(400).json({ error: "Action inconnue." });
+    }
+
+    try {
+      let prompt = "";
+      if (action === "summarize") {
+        prompt = `Tu es un assistant de gestion d'emails hautement performant.
+Analyse le message ci-dessous et rédige un résumé très clair, synthétique, structuré sous forme de liste à puces (max 4 points clés courts en français, chaque point ayant un titre en gras et une phrase).
+Identifie également s'il y a une action urgente requise ou une date butoir mentionnée.
+
+Sujet : ${emailSubject}
+Expéditeur : ${emailSender || 'Inconnu'}
+Message :
+${emailBody}`;
+
+        const response = await gemini.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: prompt,
+          config: {
+            systemInstruction: "Tu es un synthétiseur d'emails professionnel et précis. Réponds de manière claire et structurée avec du markdown propre."
+          }
+        });
+        return res.json({ success: true, summary: response.text });
+
+      } else if (action === "reply") {
+        let contextMood = "professionnel, bienveillant, et concis";
+        if (mood === "positive") {
+          contextMood = "très positif, enthousiaste, acceptant chaleureusement la proposition";
+        } else if (mood === "negative") {
+          contextMood = "poli, courtois mais déclinant de manière constructive et professionnelle";
+        } else if (mood === "more_details") {
+          contextMood = "curieux, demandant poliment plus de précisions techniques ou opérationnelles";
+        }
+
+        prompt = `Rédige une réponse d'email en français complète, soignée et professionnelle.
+L'email d'origine est de : ${emailSender || 'Inconnu'}
+Sujet d'origine : ${emailSubject}
+Message d'origine :
+${emailBody}
+
+Le ton de la réponse doit être : ${contextMood}.
+${userInstructions ? `Instructions spécifiques de l'utilisateur : "${userInstructions}"` : ""}
+
+Rédige directement l'intégralité du corps de l'email prêt à l'envoi, signé par "Leo". Ne rajoute aucun commentaire méta, seulement le courriel.`;
+
+        const response = await gemini.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: prompt,
+          config: {
+            systemInstruction: "Tu es un impeccable rédacteur d'emails d'affaires. Génère directement le corps final de l'email, prêt à être copié."
+          }
+        });
+        return res.json({ success: true, reply: response.text });
+
+      } else if (action === "classify") {
+        prompt = `Analyse l'email ci-dessous et renvoie un objet JSON valide contenant l'analyse de classification.
+L'objet JSON doit respecter exactement cette structure TypeScript :
+{
+  "category": "important" | "finance" | "business" | "update" | "none",
+  "sentiment": "positif" | "neutre" | "négatif",
+  "urgency": "basse" | "moyenne" | "haute",
+  "recommendedAction": string // une phrase courte d'action recommandée
+}
+
+Email à analyser :
+Sujet : ${emailSubject}
+Message :
+${emailBody}`;
+
+        const response = await gemini.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            systemInstruction: "Tu es un classificateur d'emails automatisé. Renvoie strictement l'objet JSON sous forme compacte sans balise markdown triple backtick."
+          }
+        });
+
+        let textJson = response.text || "{}";
+        // Clean markdown backticks if returned anyway
+        textJson = textJson.replace(/```json/g, "").replace(/```/g, "").trim();
+        const data = JSON.parse(textJson);
+        return res.json({ success: true, ...data });
+
+      } else if (action === "rewrite") {
+        prompt = `Optimise et polit le brouillon de réponse ci-dessous de manière impeccable en français.
+Conserve l'idée principale mais améliore grandiosement la clarté, l'orthographe, le style et le professionnalisme.
+
+Email d'origine reçu :
+Sujet : ${emailSubject}
+Message reçu : ${emailBody}
+
+Notre brouillon de réponse actuel :
+${draftContent}
+
+${userInstructions ? `Instructions spécifiques de réécriture : "${userInstructions}"` : "Rend le email impeccable, fluide et correctement structuré."}
+
+Fournis directement le texte réécrit d'email optimal, signé par "Leo".`;
+
+        const response = await gemini.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: prompt,
+          config: {
+            systemInstruction: "Tu es un relecteur de haut niveau. Fournis uniquement le courriel réécrit de manière fluide."
+          }
+        });
+        return res.json({ success: true, reply: response.text });
+      } else if (action === "auto-process") {
+        prompt = `Analyse le courriel électronique ci-dessous et renvoie un unique objet JSON valide contenant l'analyse complète de tri automatique et la suggestion d'un brouillon automatique de réponse.
+
+L'objet JSON doit respecter exactement la structure TypeScript suivante :
+{
+  "category": "important" | "finance" | "business" | "update" | "none",
+  "sentiment": "positif" | "neutre" | "négatif",
+  "urgency": "basse" | "moyenne" | "haute",
+  "recommendedAction": string, // Action concrète conseillée en français (ex: "Valider les clauses de week-end")
+  "aiSummary": string, // Un résumé très synthétique sous forme d'une liste à puces (max 3 puces clés, formaté en markdown propre en français)
+  "aiDraft": string // Un brouillon de réponse d'email complet, poli, professionnel, chaleureux et bien rédigé en français, prêt à être envoyé, adapté au message, signé par "Leo"
+}
+
+Données du courriel :
+Sujet : ${emailSubject}
+Expéditeur : ${emailSender || 'Inconnu'}
+Contenu :
+${emailBody}`;
+
+        const response = await gemini.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            systemInstruction: "Tu es un trieur d'emails d'affaires et un rédacteur automatique de brouillons d'élite en français. Tu ne dois JAMAIS inclure d'émoji dans tes réponses, brouillons ou résumés. Le ton doit être professionnel et sobre."
+          }
+        });
+
+        let textJson = response.text || "{}";
+        textJson = textJson.replace(/```json/g, "").replace(/```/g, "").trim();
+        const data = JSON.parse(textJson);
+        return res.json({ success: true, ...data });
+      } else if (action === "copilot") {
+        const emailListStr = Array.isArray(emails) 
+          ? emails.map(e => `[ID: ${e.id}] Expéditeur: ${e.sender} | Sujet: ${e.subject} | Date: ${e.date} | Catégorie: ${e.category} | Priorité: ${e.urgency} | Lu: ${e.read ? 'Oui' : 'Non'} | Contenu: ${e.body.substring(0, 150)}...`).join("\n---\n")
+          : "Aucun email disponible dans la boîte.";
+
+        const prompt = `Tu es l'assistant de messagerie pour l'utilisateur Léo.
+Tu as un accès direct et temps réel à l'intégralité de sa boîte de réception.
+
+Voici la liste des courriels disponibles actuellement :
+${emailListStr}
+
+Voici la demande ou l'instruction de l'utilisateur Léo :
+"${message}"
+
+Consigne cruciale de syntaxe (Actions cliquables) :
+Si tu fais référence à un ou plusieurs emails spécifiques dans ton message, tu DOIS TOUJOURS insérer la syntaxe exacte suivante dans ton texte : [Action: select-email|ID-DU-MAIL|Sujet ou Expéditeur] (par exemple : [Action: select-email|mail-1|Lucas - Contrat VPS]).
+L'interface de l'utilisateur convertira automatiquement ce tag en un bouton élégant et interactif qui lui permettra d'ouvrir directement ce mail lors d'un clic. Utilise cette syntaxe pour tous les courriels dont tu parles. Offre des liens vers les courriels pertinents de manière ultra-naturelle et fluide.
+
+Réponds de manière extrêmement soignée, professionnelle, et structurée en français. Utilise du Markdown propre (listes à puces, gras) pour rendre ta réponse très lisible. Ne mets jamais d'émojis dans tes messages ou tes boutons d'actions.`;
+
+        const response = await gemini.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: prompt,
+          config: {
+            systemInstruction: "Tu es un assistant de messagerie professionnel et d'une grande rigueur. Tu aides Léo à synthétiser et traiter son flux d'emails de manière neutre et sobre. Tu as l'interdiction formelle d'inclure des émojis."
+          }
+        });
+
+        return res.json({ success: true, reply: response.text });
+      }
+
+      return res.status(400).json({ error: "Action inconnue." });
+    } catch (err: any) {
+      console.error("Erreur de traitement IA dans server.ts :", err);
+      return res.status(500).json({ error: `Erreur IA : ${err.message}` });
+    }
+  });
+
   // Create HTTP server to share Port between Express and WebSockets
   const httpServer = http.createServer(app);
 
@@ -289,7 +625,7 @@ async function startServer() {
 
       if (gemini) {
         try {
-          const modelName = 'gemini-3.5-flash';
+          const modelName = 'gemini-3.1-flash-lite';
           console.log(`Calling Gemini (${modelName}) to process natural command: ${command}`);
           const prompt = `L'utilisateur donne à son agent de travail virtuel nommé "Hermes" la consigne suivante : "${command}".
           Tu es le cerveau de l'agent. Rédige une réponse très brève, motivante, montrant que tu comprends la tâche, et liste 2 ou 3 actions techniques concrètes de fond que tu réalises en tâche d'arrière plan en français. Réponds en 1 simple paragraphe court.`;

@@ -13,7 +13,7 @@ export function AutoReply({ state, updateState }: { state: AppState, updateState
     <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text)]">Automatisation IA</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Automatisation de messagerie</h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">Configurez les règles de réponse automatique de l'agent Hermes.</p>
         </div>
         <button className="px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2">

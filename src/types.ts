@@ -9,6 +9,11 @@ export type Email = {
   starred: boolean;
   folder: 'INBOX' | 'SENT' | 'ARCHIVE' | 'TRASH' | 'DRAFT';
   category: 'important' | 'finance' | 'business' | 'update' | 'none';
+  sentiment?: string;
+  urgency?: 'basse' | 'moyenne' | 'haute';
+  aiRecommendation?: string;
+  aiDraft?: string;
+  aiSummary?: string;
 };
 
 export type AppFile = {
