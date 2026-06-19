@@ -149,6 +149,156 @@ async function startServer() {
     res.json({ success: true, id, body });
   });
 
+  // ─── EMAIL AI API (Gemini-powered) ───
+
+  app.post("/api/mail/ai", async (req, res) => {
+    const { action, emailSubject, emailBody, emailSender, mood, draftContent, userInstructions, emails, message } = req.body;
+
+    if (!action) {
+      return res.status(400).json({ error: "L'action est requise." });
+    }
+
+    const gemini = getGeminiClient();
+    // If no Gemini client, try daemon (Hermes) via WebSocket
+    if (!gemini) {
+      // If daemon is connected, forward ALL actions to daemon for real AI processing
+      if (daemons.size > 0) {
+        const requestId = "ai-" + action + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+        const daemonPayload = JSON.stringify({
+          type: "ai_request",
+          id: requestId,
+          action,
+          emailSubject: emailSubject || "",
+          emailBody: emailBody || "",
+          emailSender: emailSender || "",
+          mood: mood || "neutral",
+          draftContent: draftContent || "",
+          userInstructions: userInstructions || "",
+          emails: Array.isArray(emails) ? emails.map(e => ({
+            id: e.id, sender: e.sender, subject: e.subject,
+            body: (e.body || "").substring(0, 500), date: e.date,
+            category: e.category, urgency: e.urgency, read: e.read,
+          })) : [],
+          message: message || "",
+        });
+        const timer = setTimeout(() => {
+          if (pendingCopilotRequests.has(requestId)) {
+            pendingCopilotRequests.delete(requestId);
+            res.json({
+              success: true,
+              reply: "Désolé, le daemon n'a pas répondu à temps. Réessayez.",
+              summary: "Désolé, le daemon n'a pas répondu à temps.",
+              simulated: true,
+            });
+          }
+        }, 45000);
+        pendingCopilotRequests.set(requestId, { res, timer });
+        daemons.forEach(d => {
+          if (d.readyState === WebSocket.OPEN) d.send(daemonPayload);
+        });
+        return;
+      }
+
+      // Static fallback if no daemon
+      console.log("⚠️ No AI provider available. Using static fallback.");
+      if (action === "copilot") {
+        const msgClean = (message || "").toLowerCase();
+        let replyText = "";
+        if (msgClean.includes("résum") || msgClean.includes("synthè") || msgClean.includes("boîte")) {
+          replyText = "### Synthèse de votre boîte\n\n1. **Lucas** — Contrat VPS : Clauses modifiées, retour attendu.\n2. **Sophie Martin** — Devis refactoring : Prospect chaud.\n\n*Mode hors-ligne — connectez le daemon pour une vraie analyse.*";
+        } else {
+          replyText = "Bonjour Leo ! Je suis votre assistant.\n\n⚠️ Le daemon Hermes n'est pas connecté. Les réponses sont limitées.\n\nDemandez-moi :\n* « Fais-moi un résumé de ma boîte »\n* « Quelles sont mes actions urgentes ?";
+        }
+        return res.json({ success: true, reply: replyText, simulated: true });
+      } else if (action === "reply") {
+        const text = `Bonjour,\n\nJ'accuse bonne réception de votre message concernant "${emailSubject || 'notre projet'}".\n\nJe reviens vers vous rapidement.\n\nTrès cordialement,\nLeo`;
+        return res.json({ success: true, reply: text, simulated: true });
+      } else if (action === "summarize") {
+        return res.json({ success: true, summary: `Sujet: ${emailSubject || 'N/A'}\nExpéditeur: ${emailSubject || 'N/A'}\n\n*Mode hors-ligne — connectez le daemon pour une vraie analyse.*`, simulated: true });
+      } else if (action === "classify") {
+        return res.json({ success: true, category: "important", sentiment: "neutre", urgency: "moyenne", recommendedAction: "Traiter manuellement.", simulated: true });
+      } else if (action === "rewrite") {
+        return res.json({ success: true, reply: (draftContent || "") + "\n\nCordialement,\nLeo", simulated: true });
+      } else if (action === "auto-process") {
+        return res.json({ success: true, category: "update", sentiment: "neutre", urgency: "moyenne", recommendedAction: "Traiter manuellement.", aiSummary: emailSubject, aiDraft: "Bonjour,\n\nCordialement,\nLeo", simulated: true });
+      }
+      return res.status(400).json({ error: "Action inconnue." });
+    }
+
+    try {
+      let prompt = "";
+      if (action === "summarize") {
+        prompt = `Tu es un assistant de gestion d'emails hautement performant.\nAnalyse le message ci-dessous et rédige un résumé très clair, synthétique, structuré sous forme de liste à puces (max 4 points clés courts en français).\n\nSujet : ${emailSubject}\nExpéditeur : ${emailSender || 'Inconnu'}\nMessage :\n${emailBody}`;
+        const response = await gemini.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: prompt,
+          config: { systemInstruction: "Tu es un synthétiseur d'emails professionnel et précis. Réponds de manière claire et structurée avec du markdown propre." }
+        });
+        return res.json({ success: true, summary: response.text });
+
+      } else if (action === "reply") {
+        let contextMood = "professionnel, bienveillant, et concis";
+        if (mood === "positive") contextMood = "très positif, enthousiaste, acceptant chaleureusement la proposition";
+        else if (mood === "negative") contextMood = "poli, courtois mais déclinant de manière constructive et professionnelle";
+        else if (mood === "more_details") contextMood = "curieux, demandant poliment plus de précisions techniques ou opérationnelles";
+
+        prompt = `Rédige une réponse d'email en français complète, soignée et professionnelle.\nL'email d'origine est de : ${emailSender || 'Inconnu'}\nSujet d'origine : ${emailSubject}\nMessage d'origine :\n${emailBody}\n\nLe ton de la réponse doit être : ${contextMood}.\n${userInstructions ? `Instructions spécifiques : "${userInstructions}"` : ""}\n\nRédige directement l'intégralité du corps de l'email prêt à l'envoi, signé par "Leo".`;
+        const response = await gemini.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: prompt,
+          config: { systemInstruction: "Tu es un impeccable rédacteur d'emails d'affaires. Génère directement le corps final de l'email." }
+        });
+        return res.json({ success: true, reply: response.text });
+
+      } else if (action === "classify") {
+        prompt = `Analyse l'email ci-dessous et renvoie un objet JSON valide : { "category": "important"|"finance"|"business"|"update"|"none", "sentiment": "positif"|"neutre"|"négatif", "urgency": "basse"|"moyenne"|"haute", "recommendedAction": string }\n\nSujet : ${emailSubject}\nMessage :\n${emailBody}`;
+        const response = await gemini.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: prompt,
+          config: { responseMimeType: "application/json", systemInstruction: "Tu es un classificateur d'emails. Renvoie strictement l'objet JSON sans balise markdown." }
+        });
+        let textJson = (response.text || "{}").replace(/```json/g, "").replace(/```/g, "").trim();
+        return res.json({ success: true, ...JSON.parse(textJson) });
+
+      } else if (action === "rewrite") {
+        prompt = `Optimise et polit le brouillon de réponse ci-dessous.\n\nSujet : ${emailSubject}\nMessage reçu : ${emailBody}\n\nBrouillon actuel :\n${draftContent}\n\n${userInstructions ? `Instructions : "${userInstructions}"` : ""}\n\nFournis directement le texte réécrit, signé par "Leo".`;
+        const response = await gemini.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: prompt,
+          config: { systemInstruction: "Tu es un relecteur de haut niveau. Fournis uniquement le courriel réécrit." }
+        });
+        return res.json({ success: true, reply: response.text });
+
+      } else if (action === "auto-process") {
+        prompt = `Analyse le courriel ci-dessous et renvoie un JSON : { "category": string, "sentiment": string, "urgency": string, "recommendedAction": string, "aiSummary": string, "aiDraft": string }\n\nSujet : ${emailSubject}\nExpéditeur : ${emailSender || 'Inconnu'}\nContenu :\n${emailBody}`;
+        const response = await gemini.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: prompt,
+          config: { responseMimeType: "application/json", systemInstruction: "Tu es un trieur d'emails. Pas d'émoji. Ton professionnel et sobre." }
+        });
+        let textJson = (response.text || "{}").replace(/```json/g, "").replace(/```/g, "").trim();
+        return res.json({ success: true, ...JSON.parse(textJson) });
+
+      } else if (action === "copilot") {
+        const emailListStr = Array.isArray(emails)
+          ? emails.map(e => `[ID: ${e.id}] Expéditeur: ${e.sender} | Sujet: ${e.subject} | Contenu: ${(e.body || "").substring(0, 150)}...`).join("\n---\n")
+          : "Aucun email disponible.";
+        const copilotPrompt = `Tu es l'assistant de messagerie pour Léo. Voici ses emails :\n${emailListStr}\n\nDemande de Léo : "${message}"\n\nSi tu références un email, utilise : [Action: select-email|ID|Sujet]\nRéponds en français, structuré en markdown, sans émoji.`;
+        const response = await gemini.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: copilotPrompt,
+          config: { systemInstruction: "Tu es un assistant de messagerie professionnel. Pas d'émoji." }
+        });
+        return res.json({ success: true, reply: response.text });
+      }
+
+      return res.status(400).json({ error: "Action inconnue." });
+    } catch (err: any) {
+      console.error("Erreur IA email:", err);
+      return res.status(500).json({ error: `Erreur IA : ${err.message}` });
+    }
+  });
+
   // Create HTTP server to share Port between Express and WebSockets
   const httpServer = http.createServer(app);
 
@@ -158,6 +308,9 @@ async function startServer() {
   // Store active sessions
   const clients = new Set<WebSocket>();
   const daemons = new Set<WebSocket>();
+
+  // Pending copilot requests waiting for daemon response
+  const pendingCopilotRequests = new Map<string, { res: express.Response; timer: NodeJS.Timeout }>();
 
   // Lazy initialize Gemini API helper to avoid startup crashes if key is missing
   let ai: GoogleGenAI | null = null;
@@ -222,6 +375,24 @@ async function startServer() {
                 client.send(msg.toString());
               }
             });
+          }
+          // Handle copilot response from daemon
+          if (parsed.type === "copilot_response" || parsed.type === "ai_response") {
+            const pending = pendingCopilotRequests.get(parsed.id);
+            if (pending) {
+              clearTimeout(pending.timer);
+              pendingCopilotRequests.delete(parsed.id);
+              const response: any = { success: true, source: "hermes" };
+              if (parsed.reply) response.reply = parsed.reply;
+              if (parsed.summary) response.summary = parsed.summary;
+              if (parsed.category) response.category = parsed.category;
+              if (parsed.sentiment) response.sentiment = parsed.sentiment;
+              if (parsed.urgency) response.urgency = parsed.urgency;
+              if (parsed.recommendedAction) response.recommendedAction = parsed.recommendedAction;
+              if (parsed.aiSummary) response.aiSummary = parsed.aiSummary;
+              if (parsed.aiDraft) response.aiDraft = parsed.aiDraft;
+              pending.res.json(response);
+            }
           }
         } catch (err) {
           // Send raw message

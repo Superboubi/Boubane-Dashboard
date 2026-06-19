@@ -133,10 +133,30 @@ export function Emails({ state, updateState, navigateToChat }: { state: AppState
     setFolder('SENT');
   };
 
-  const startAutomatedReply = () => {
+  const startAutomatedReply = async () => {
     if (!selectedMail) return;
     setActiveReply(selectedMail.id);
-    setDraftContent(`Bonjour ${selectedMail.sender.split(' ')[0] || ''},\n\nJ'ai bien pris connaissance de votre message du ${new Date(selectedMail.date).toLocaleDateString('fr-FR')} concernant "${selectedMail.subject}".\n\nN'hésitez pas si vous avez d'autres questions.\n\nCordialement,\nLeo`);
+    setDraftContent('');
+    try {
+      const res = await fetch('/api/mail/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reply',
+          emailSubject: selectedMail.subject,
+          emailBody: getSelectedMailBody(),
+          emailSender: selectedMail.sender,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.reply) {
+        setDraftContent(data.reply);
+      } else {
+        setDraftContent(`Bonjour ${selectedMail.sender.split(' ')[0] || ''},\n\nJ'ai bien pris connaissance de votre message concernant "${selectedMail.subject}".\n\nJe reviens vers vous rapidement.\n\nCordialement,\nLeo`);
+      }
+    } catch {
+      setDraftContent(`Bonjour ${selectedMail.sender.split(' ')[0] || ''},\n\nJ'ai bien pris connaissance de votre message concernant "${selectedMail.subject}".\n\nJe reviens vers vous rapidement.\n\nCordialement,\nLeo`);
+    }
   };
 
   const sendReply = () => {
