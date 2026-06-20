@@ -1,10 +1,51 @@
 import { AppState } from "../types";
-import { Settings2, Save, Calendar, CheckCircle2, Link2, RefreshCw, Shield, Bot, Layout, Bell, Globe } from "lucide-react";
+import { Settings2, Save, Calendar, CheckCircle2, Link2, RefreshCw, Shield, Bot, Layout, Bell, Globe, Radio, Check, X, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 export function Settings({ state, updateState }: { state: AppState, updateState: (s: Partial<AppState>) => void }) {
   const [syncedCalendars, setSyncedCalendars] = useState<string[]>(['google']);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Hermes Agent Settings
+  const [hermesEnabled, setHermesEnabled] = useState(false);
+  const [hermesUrl, setHermesUrl] = useState(() => localStorage.getItem('hermes_agent_url') || '');
+  const [hermesApiKey, setHermesApiKey] = useState(() => localStorage.getItem('hermes_api_key') || '');
+  const [hermesStatus, setHermesStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
+  const [hermesError, setHermesError] = useState<string | null>(null);
+
+  const testHermesConnection = async () => {
+    if (!hermesUrl.trim()) {
+      setHermesError("L'URL de l'agent est requise");
+      return;
+    }
+    
+    setHermesStatus('testing');
+    setHermesError(null);
+    
+    try {
+      const response = await fetch(`${hermesUrl}/api/status`, {
+        method: 'GET',
+        headers: hermesApiKey ? { 'Authorization': `Bearer ${hermesApiKey}` } : {},
+      });
+      
+      if (response.ok) {
+        setHermesStatus('connected');
+        localStorage.setItem('hermes_agent_url', hermesUrl);
+        localStorage.setItem('hermes_api_key', hermesApiKey);
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (err) {
+      setHermesStatus('error');
+      setHermesError(err instanceof Error ? err.message : 'Connection failed');
+    }
+  };
+
+  const saveHermesConfig = () => {
+    localStorage.setItem('hermes_agent_url', hermesUrl);
+    localStorage.setItem('hermes_api_key', hermesApiKey);
+    localStorage.setItem('hermes_enabled', String(hermesEnabled));
+  };
 
   // Local state for complex settings before they might be saved to global (simulated)
   const [retention, setRetention] = useState('30');
@@ -77,10 +118,109 @@ export function Settings({ state, updateState }: { state: AppState, updateState:
             </div>
           </div>
 
+          {/* Hermes Agent Configuration */}
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4 border-b border-[var(--border)] pb-4 flex items-center gap-2">
+              <Radio className="w-5 h-5 text-[var(--accent)]" />
+              Agent Hermes Externe
+            </h2>
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div className="pr-4">
+                  <div className="font-medium text-[var(--text)]">Activer Hermes</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Connecter un agent Hermes externe pour l'analyse automatique des emails.</div>
+                </div>
+                <button
+                  onClick={() => { setHermesEnabled(!hermesEnabled); saveHermesConfig(); }}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${hermesEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+                >
+                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${hermesEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              {hermesEnabled && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text)] mb-1.5">
+                      URL de l'agent Hermes
+                    </label>
+                    <input
+                      type="url"
+                      value={hermesUrl}
+                      onChange={(e) => setHermesUrl(e.target.value)}
+                      placeholder="https://hermes.example.com"
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    />
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">L'URL de base de votre agent Hermes (ex: https://hermes-votre-domaine.com)</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text)] mb-1.5">
+                      Cle API (optionnel)
+                    </label>
+                    <input
+                      type="password"
+                      value={hermesApiKey}
+                      onChange={(e) => setHermesApiKey(e.target.value)}
+                      placeholder="Laissez vide si pas d'auth requise"
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      onClick={testHermesConnection}
+                      disabled={hermesStatus === 'testing'}
+                      className="px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {hermesStatus === 'testing' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Test...
+                        </>
+                      ) : (
+                        'Tester la connexion'
+                      )}
+                    </button>
+
+                    {hermesStatus === 'connected' && (
+                      <div className="flex items-center gap-1.5 text-emerald-500 text-sm">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Connecte
+                      </div>
+                    )}
+
+                    {hermesStatus === 'error' && (
+                      <div className="flex items-center gap-1.5 text-red-500 text-sm">
+                        <X className="w-4 h-4" />
+                        {hermesError || 'Erreur de connexion'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-muted)] space-y-1.5">
+                    <div className="font-medium text-[var(--text)]">Integration automatique :</div>
+                    <div>- GET /api/hermes/emails : Liste des emails</div>
+                    <div>- GET /api/hermes/emails/:id : Email complet</div>
+                    <div>- POST /api/hermes/analysis : Envoyer une analyse</div>
+                    <div>- WS /api/hermes/ws : Evenements temps reel</div>
+                  </div>
+
+                  <button
+                    onClick={saveHermesConfig}
+                    className="w-full px-4 py-2 bg-[var(--accent-glow)] text-[var(--accent)] border border-[var(--accent)]/30 rounded-lg text-sm font-medium hover:bg-[var(--accent)] hover:text-[var(--bg)] transition-all"
+                  >
+                    Enregistrer la configuration
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
           {/* AI Settings */}
           <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-4 border-b border-[var(--border)] pb-4 flex items-center gap-2">
-              <Bot className="w-5 h-5 text-[var(--accent)]" /> 
+              <Bot className="w-5 h-5 text-[var(--accent)]" />
               Comportement de l'Agent Hermes
             </h2>
             <div className="space-y-5">
