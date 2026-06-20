@@ -15,34 +15,47 @@ export function Settings({ state, updateState }: { state: AppState, updateState:
 
   const testHermesConnection = async () => {
     if (!hermesUrl.trim()) {
-      setHermesError("L'URL de l'agent est requise");
+      setHermesError("L'URL d'Hermes est requise");
       return;
     }
     
+    const baseUrl = hermesUrl.replace(/\/$/, '');
     setHermesStatus('testing');
     setHermesError(null);
     
     try {
-      const response = await fetch(`${hermesUrl}/api/status`, {
+      // Test with /v1/models (OpenAI-compatible endpoint)
+      const response = await fetch(`${baseUrl}/v1/models`, {
         method: 'GET',
-        headers: hermesApiKey ? { 'Authorization': `Bearer ${hermesApiKey}` } : {},
+        headers: {
+          'Authorization': `Bearer ${hermesApiKey}`,
+          'Content-Type': 'application/json',
+        },
       });
       
       if (response.ok) {
         setHermesStatus('connected');
-        localStorage.setItem('hermes_agent_url', hermesUrl);
+        localStorage.setItem('hermes_agent_url', baseUrl);
         localStorage.setItem('hermes_api_key', hermesApiKey);
+        localStorage.setItem('hermes_enabled', String(hermesEnabled));
+      } else if (response.status === 401) {
+        // Auth required but connection works
+        setHermesStatus('connected');
+        localStorage.setItem('hermes_agent_url', baseUrl);
+        localStorage.setItem('hermes_api_key', hermesApiKey);
+        localStorage.setItem('hermes_enabled', String(hermesEnabled));
       } else {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (err) {
       setHermesStatus('error');
-      setHermesError(err instanceof Error ? err.message : 'Connection failed');
+      setHermesError(err instanceof Error ? err.message : 'Connexion échouée');
     }
   };
 
   const saveHermesConfig = () => {
-    localStorage.setItem('hermes_agent_url', hermesUrl);
+    const baseUrl = hermesUrl.replace(/\/$/, '');
+    localStorage.setItem('hermes_agent_url', baseUrl);
     localStorage.setItem('hermes_api_key', hermesApiKey);
     localStorage.setItem('hermes_enabled', String(hermesEnabled));
   };
@@ -199,11 +212,22 @@ export function Settings({ state, updateState }: { state: AppState, updateState:
                   </div>
 
                   <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-muted)] space-y-1.5">
-                    <div className="font-medium text-[var(--text)]">Integration automatique :</div>
-                    <div>- GET /api/hermes/emails : Liste des emails</div>
-                    <div>- GET /api/hermes/emails/:id : Email complet</div>
-                    <div>- POST /api/hermes/analysis : Envoyer une analyse</div>
-                    <div>- WS /api/hermes/ws : Evenements temps reel</div>
+                    <div className="font-medium text-[var(--text)]">Integration API OpenAI-compatible :</div>
+                    <div>- POST /v1/chat/completions : Envoyer un email pour analyse ou génération de réponse</div>
+                    <div>- GET /v1/models : Vérifier les modèles disponibles</div>
+                    <div>- GET /health : Test de connexion rapide</div>
+                  </div>
+
+                  <div className="p-3 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-lg text-xs text-[var(--text-muted)]">
+                    <div className="font-medium text-[var(--text)] mb-1">Pour activer Hermes sur ton VPS :</div>
+                    <div className="space-y-0.5 font-mono text-[10px]">
+                      <div>1. Ajoute dans ~/.hermes/.env :</div>
+                      <div className="pl-2 text-[var(--accent)]">API_SERVER_ENABLED=true</div>
+                      <div className="pl-2 text-[var(--accent)]">API_SERVER_KEY=ta_cle_secrete</div>
+                      <div className="pl-2 text-[var(--accent)]">API_SERVER_HOST=0.0.0.0</div>
+                      <div>2. Lance : hermes gateway</div>
+                      <div>3. Configure l'URL ici (ex: http://89.x.x.x:8642)</div>
+                    </div>
                   </div>
 
                   <button
