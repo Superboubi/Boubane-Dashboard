@@ -149,6 +149,123 @@ async function startServer() {
     res.json({ success: true, id, body });
   });
 
+  // ─── HERMES AGENT API ───
+  // Permet a un agent Hermes externe de lire les emails et envoyer des analyses
+
+  // Hermes lit les emails
+  app.get("/api/hermes/emails", async (req, res) => {
+    const folder = (req.query.folder as string) || 'INBOX';
+    const limit = parseInt(req.query.limit as string) || 50;
+    const emails = await fetchEmailsFromHimalaya(limit, folder);
+    
+    const hermesEmails = emails.map((e: any) => ({
+      id: `mail-${e.id}`,
+      sender: e.from?.name || e.from?.email || 'Unknown',
+      senderEmail: e.from?.email || '',
+      subject: e.subject || '(Sans objet)',
+      body: '',
+      date: e.date,
+      read: !e.flags?.includes('\\Seen'),
+      folder: folder.toLowerCase()
+    }));
+    
+    res.json({ success: true, emails: hermesEmails, folder });
+  });
+
+  // Hermes lit un email complet
+  app.get("/api/hermes/emails/:id", async (req, res) => {
+    const apiId = parseInt(req.params.id.replace('mail-', ''));
+    if (isNaN(apiId)) return res.status(400).json({ error: "Invalid email ID" });
+    
+    const emails = await fetchEmailsFromHimalaya(1, 'INBOX');
+    const email = emails.find((e: any) => e.id === apiId);
+    if (!email) return res.status(404).json({ error: "Email not found" });
+    
+    const body = await fetchEmailBody(apiId);
+    
+    res.json({
+      success: true,
+      email: {
+        id: `mail-${apiId}`,
+        sender: email.from?.name || email.from?.email || 'Unknown',
+        senderEmail: email.from?.email || '',
+        subject: email.subject || '(Sans objet)',
+        body: body,
+        date: email.date,
+        read: !email.flags?.includes('\\Seen'),
+        folder: 'INBOX'
+      }
+    });
+  });
+
+  // Hermes envoie une analyse (categorisation, resume, etc.)
+  app.post("/api/hermes/analysis", (req, res) => {
+    const { emailId, category, sentiment, urgency, summary, recommendedAction, draftReply, confidence } = req.body;
+    
+    if (!emailId) {
+      return res.status(400).json({ error: "emailId is required" });
+    }
+
+    const analysis = {
+      emailId,
+      category,
+      sentiment,
+      urgency,
+      summary,
+      recommendedAction,
+      draftReply,
+      confidence: confidence || 85,
+      analyzedBy: 'hermes',
+      analyzedAt: new Date().toISOString()
+    };
+
+    // Broadcast l'analyse a tous les clientsconnectes (dashboard en temps reel)
+    const payload = JSON.stringify({
+      type: "hermes_analysis",
+      analysis
+    });
+    clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    });
+
+    console.log(`[Hermes] Analysis received for ${emailId}:`, { category, urgency, sentiment });
+    res.json({ success: true, analysis });
+  });
+
+  // Hermes recoit une notification quand un email est ouvert sur le dashboard
+  // (pour declencher l'analyse automatique si configure)
+  app.post("/api/hermes/notify", (req, res) => {
+    const { emailId, event } = req.body;
+    
+    // Broadcast aux daemons Hermes connectes
+    if (daemons.size > 0) {
+      const payload = JSON.stringify({
+        type: "email_event",
+        emailId,
+        event,
+        timestamp: new Date().toISOString()
+      });
+      daemons.forEach(d => {
+        if (d.readyState === WebSocket.OPEN) {
+          d.send(payload);
+        }
+      });
+    }
+
+    res.json({ success: true });
+  });
+
+  // Status de connexion Hermes
+  app.get("/api/hermes/status", (req, res) => {
+    res.json({
+      connected: daemons.size > 0,
+      daemonCount: daemons.size,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // ─── EMAIL AI API (Gemini-powered) ───
 
   app.post("/api/mail/ai", async (req, res) => {
