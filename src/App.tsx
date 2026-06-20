@@ -10,6 +10,7 @@ import { Web } from "./components/Web";
 import { Calendar } from "./components/Calendar";
 import { Settings } from "./components/Settings";
 import { Agents } from "./components/Agents";
+import { AgentVercel } from "./components/AgentVercel";
 import { AutoReply } from "./components/AutoReply";
 import { Business } from "./components/Business";
 import { Site } from "./components/Site";
@@ -312,6 +313,7 @@ export default function App() {
           {activeTab === 'web' && <Web state={state} navigateToChat={() => setActiveTab('activity')} />}
           {activeTab === 'calendar' && <Calendar state={state} navigateToChat={() => setActiveTab('activity')} />}
           {activeTab === 'agents' && <Agents state={state} updateState={updateState} />}
+          {activeTab === 'agent-vercel' && <AgentVercel />}
           {activeTab === 'settings' && <Settings state={state} updateState={updateState} />}
           {activeTab === 'auto-reply' && <AutoReply state={state} updateState={updateState} />}
           {activeTab === 'business' && <Business state={state} />}

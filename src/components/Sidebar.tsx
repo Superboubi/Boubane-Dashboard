@@ -17,6 +17,7 @@ import {
   Moon,
   ChevronLeft,
   ChevronRight,
+  Rocket,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -61,6 +62,12 @@ export function Sidebar({ activeTab, setActiveTab, theme, toggleTheme, unreadCou
         { id: 'clients', icon: Users, label: 'Clients' },
         { id: 'site', icon: Layout, label: 'Site web' },
         { id: 'agents', icon: Bot, label: 'Agents' },
+      ],
+    },
+    {
+      group: 'IA',
+      items: [
+        { id: 'agent-vercel', icon: Rocket, label: 'Agent Vercel' },
       ],
     },
     {
