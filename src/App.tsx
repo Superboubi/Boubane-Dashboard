@@ -147,6 +147,8 @@ export default function App() {
 
   const handleCopilotSubmit = async () => {
     if (!copilotInput.trim() || copilotLoading) return;
+    const inputToSend = copilotInput;
+    setCopilotInput('');
     setCopilotLoading(true);
     setCopilotResponse('');
     try {
@@ -156,7 +158,7 @@ export default function App() {
         : '\n\nContext: La boite mail est vide.';
 
       const reply = await hermesConnector.chat([
-        { role: 'user', content: copilotInput + emailsContext }
+        { role: 'user', content: inputToSend + emailsContext }
       ]);
       
       await streamText(reply);
