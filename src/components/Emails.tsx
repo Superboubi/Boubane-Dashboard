@@ -3,13 +3,13 @@ import { AppState, Email } from "../types";
 import { Inbox, Send, Archive, Trash2, PenTool, Mail, RefreshCw, Loader2, X } from "lucide-react";
 import { EmailDetail } from "./emails/EmailDetail";
 
+const VPS_BACKEND = localStorage.getItem('vps_backend_url') || 'https://145-241-175-52.nip.io';
+
 interface ApiEmail {
   id: number;
   subject: string;
-  from: { name?: string; email: string };
+  from: string;
   date: string;
-  flags: string[];
-  folder: string;
 }
 
 export function Emails({ state, updateState, navigateToChat }: { state: AppState, updateState: (s: Partial<AppState>) => void, navigateToChat: () => void }) {
@@ -24,18 +24,18 @@ export function Emails({ state, updateState, navigateToChat }: { state: AppState
     if (showLoader) setLoading(true);
     else setRefreshing(true);
     try {
-      const res = await fetch(`/api/emails?folder=${currentFolder}&limit=50`);
+      const res = await fetch(`${VPS_BACKEND}/api/emails?folder=${currentFolder}&limit=50`);
       const data = await res.json();
       if (data.success && data.emails) {
         const mapped: Email[] = data.emails.map((e: ApiEmail) => ({
           id: `mail-${e.id}`,
-          sender: e.from.name || e.from.email,
-          senderEmail: e.from.email,
+          sender: e.from || 'Unknown',
+          senderEmail: '',
           subject: e.subject || '(Sans objet)',
-          body: emailBodies[e.id] ? emailBodies[e.id] : '',
+          body: '',
           date: e.date,
-          read: !e.flags.includes('\\Seen'),
-          starred: e.flags.includes('\\Flagged'),
+          read: true,
+          starred: false,
           folder: currentFolder as any,
           category: 'none'
         }));
@@ -47,7 +47,7 @@ export function Emails({ state, updateState, navigateToChat }: { state: AppState
       setLoading(false);
       setRefreshing(false);
     }
-  }, [emailBodies]);
+  }, []);
 
   useEffect(() => {
     fetchEmails(folder);
@@ -61,7 +61,7 @@ export function Emails({ state, updateState, navigateToChat }: { state: AppState
   const fetchEmailBody = async (apiId: number) => {
     if (emailBodies[apiId]) return;
     try {
-      const res = await fetch(`/api/emails/${apiId}`);
+      const res = await fetch(`${VPS_BACKEND}/api/emails/${apiId}`);
       const data = await res.json();
       if (data.success) {
         setEmailBodies(prev => ({ ...prev, [apiId]: data.body }));
