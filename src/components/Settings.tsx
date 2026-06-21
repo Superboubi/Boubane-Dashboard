@@ -1,5 +1,5 @@
 import { AppState } from "../types";
-import { Settings2, Save, Calendar, CheckCircle2, Link2, RefreshCw, Shield, Bot, Layout, Bell, Globe, Radio, Check, X, Loader2 } from "lucide-react";
+import { Settings2, Save, Calendar, CheckCircle2, Link2, RefreshCw, Shield, Bot, Layout, Bell, Globe, Radio, Check, X, Loader2, Server } from "lucide-react";
 import { useState } from "react";
 
 export function Settings({ state, updateState }: { state: AppState, updateState: (s: Partial<AppState>) => void }) {
@@ -12,6 +12,19 @@ export function Settings({ state, updateState }: { state: AppState, updateState:
   const [hermesApiKey, setHermesApiKey] = useState(() => localStorage.getItem('hermes_api_key') || '');
   const [hermesStatus, setHermesStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
   const [hermesError, setHermesError] = useState<string | null>(null);
+
+  const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('vps_backend_url') || 'https://145-241-175-52.nip.io');
+  const [backendStatus, setBackendStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
+
+  const testBackendConnection = async () => {
+    if (!backendUrl.trim()) return;
+    setBackendStatus('testing');
+    try {
+      const res = await fetch(`${backendUrl}/api/emails?limit=1`);
+      setBackendStatus(res.ok ? 'connected' : 'error');
+      if (res.ok) localStorage.setItem('vps_backend_url', backendUrl);
+    } catch { setBackendStatus('error'); }
+  };
 
   const testHermesConnection = async () => {
     if (!hermesUrl.trim()) {
