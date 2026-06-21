@@ -22,33 +22,42 @@ import { Menu, X, Sparkles, Bot, Mail } from "lucide-react";
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/hermes/ws`;
 
-function useStreamingText(done: boolean) {
+function useStreamingText() {
   const [displayed, setDisplayed] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isDone, setIsDone] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stream = useCallback(async (text: string) => {
-    setIsStreaming(true);
-    setDisplayed('');
-    let idx = 0;
-    const charsPerTick = 3;
-    intervalRef.current = setInterval(() => {
-      idx += charsPerTick;
-      if (idx >= text.length) {
-        setDisplayed(text);
-        setIsStreaming(false);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      } else {
-        setDisplayed(text.slice(0, idx));
-      }
-    }, 20);
+    return new Promise<void>((resolve) => {
+      setIsStreaming(true);
+      setIsDone(false);
+      setDisplayed('');
+      let idx = 0;
+      const charsPerTick = 3;
+      
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      
+      intervalRef.current = setInterval(() => {
+        idx += charsPerTick;
+        if (idx >= text.length) {
+          setDisplayed(text);
+          setIsStreaming(false);
+          setIsDone(true);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          resolve();
+        } else {
+          setDisplayed(text.slice(0, idx));
+        }
+      }, 20);
+    });
   }, []);
 
   useEffect(() => {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
-  return { displayed, isStreaming, stream };
+  return { displayed, isStreaming, isDone, stream };
 }
 
 export default function App() {
@@ -61,7 +70,7 @@ export default function App() {
   const [copilotLoading, setCopilotLoading] = useState(false);
 
   const { isConnected, subscribe, send } = useWebSocket(WS_URL);
-  const { displayed: streamedResponse, isStreaming, stream: streamText } = useStreamingText(false);
+  const { displayed: streamedResponse, isStreaming, stream: streamText } = useStreamingText();
 
   useEffect(() => {
     const STATE_VERSION = 2;
