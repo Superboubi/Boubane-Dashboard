@@ -18,6 +18,7 @@ import { AppState, WSMessage } from "./types";
 import { DEFAULT_STATE } from "./data";
 import { useWebSocket } from "./useWebSocket";
 import { hermesConnector } from "./lib/hermes-connector";
+import { Menu, X, Sparkles, Bot, Mail } from "lucide-react";
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/hermes/ws`;
 
