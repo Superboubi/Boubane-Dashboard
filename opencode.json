@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "name": "boubane-dashboard",
+  "model": "anthropic/claude-sonnet-4-5",
+  "skills": {
+    "email-ops": {
+      "description": "Workflow email : triage, draft, reply, send verification",
+      "file": ".opencode/skills/email-ops.md"
+    },
+    "dashboard-builder": {
+      "description": "Dashboard operational questions first",
+      "file": ".opencode/skills/dashboard-builder.md"
+    },
+    "liquid-glass": {
+      "description": "Glassmorphism design system for web",
+      "file": ".opencode/skills/liquid-glass.md"
+    }
+  },
+  "plugins": [
+    "ecc-universal"
+  ],
+  "instructions": [
+    "Use email-ops skill for any email-related tasks (triage, draft, reply, send)",
+    "Follow liquid-glass design principles for UI components (glass effect, blur, depth)",
+    "Apply dashboard-builder approach: question-first, not metric-first"
+  ]
+}

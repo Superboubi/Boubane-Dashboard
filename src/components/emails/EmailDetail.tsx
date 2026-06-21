@@ -3,6 +3,7 @@ import { Reply, Send, Paperclip, X, Loader2, Archive, Trash2, MailPlus, Forward 
 import { Email } from "../../types";
 import { HermesActionBar } from "./HermesActionBar";
 import { HermesDraftBubble } from "./HermesDraftBubble";
+import { hermesConnector } from "../../lib/hermes-connector";
 
 interface EmailDetailProps {
   email: Email;
@@ -27,19 +28,58 @@ export function EmailDetail({
   const [isComposing, setIsComposing] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
-  const callHermesAPI = async (action: string, body: object) => {
+  const callHermesAPI = async (action: string, emailData: { emailSubject: string; emailBody: string; emailSender: string }) => {
     setLoadingAction(action);
     setHermesStatus('thinking');
     try {
-      const res = await fetch('/api/mail/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...body }),
-      });
-      const data = await res.json();
-      if (data.success) return data;
-      throw new Error('API error');
-    } catch {
+      let prompt = '';
+      let result: { reply?: string; summary?: string; category?: string; urgency?: string } = {};
+
+      if (action === 'reply') {
+        prompt = `Tu es Hermes, assistant IA specialise en redaction d'emails professionnels.
+Reponds a cet email de maniere adaptee, professionnelle et concise.
+
+Email a responder :
+- De: ${emailData.emailSender}
+- Sujet: ${emailData.emailSubject}
+- Contenu: ${emailData.emailBody}
+
+Reponds uniquement avec le texte de la reponse, sans preciser que tu es un assistant.`;
+        const reply = await hermesConnector.chat([{ role: 'user', content: prompt }]);
+        result = { reply };
+      } else if (action === 'summarize') {
+        prompt = `Tu es Hermes, assistant IA specialises dans l'analyse d'emails.
+Fais un resume clair et structure de cet email en francais.
+
+- De: ${emailData.emailSender}
+- Sujet: ${emailData.emailSubject}
+- Contenu: ${emailData.emailBody}
+
+Donne un resume en 3-4 points cles.`;
+        const summary = await hermesConnector.chat([{ role: 'user', content: prompt }]);
+        result = { summary };
+      } else if (action === 'classify') {
+        prompt = `Tu es Hermes, assistant IA specialise dans la gestion d'emails.
+Categorise cet email et donne son niveau d'urgence.
+
+Email :
+- De: ${emailData.emailSender}
+- Sujet: ${emailData.emailSubject}
+- Contenu: ${emailData.emailBody}
+
+Reponds uniquement au format JSON : {"category": "urgent/important/normal/spam", "urgency": "haute/moyenne/basse", "reason": "bref pourquoi"}`;
+        const classifyResponse = await hermesConnector.chat([{ role: 'user', content: prompt }]);
+        try {
+          const parsed = JSON.parse(classifyResponse);
+          result = { category: parsed.category, urgency: parsed.urgency };
+        } catch {
+          result = { category: 'normal', urgency: 'moyenne' };
+        }
+      }
+
+      return { success: true, ...result };
+    } catch (err) {
+      console.error('[EmailDetail] Hermes error:', err);
       setHermesStatus('error');
       return null;
     } finally {

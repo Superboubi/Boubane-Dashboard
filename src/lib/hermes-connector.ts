@@ -55,6 +55,52 @@ class HermesConnector {
     console.log('[Hermes] Connector configured:', { apiUrl: config.apiUrl, agentId: config.agentId });
   }
 
+  getStoredConfig(): { url: string; apiKey: string } | null {
+    const url = localStorage.getItem('hermes_agent_url');
+    const apiKey = localStorage.getItem('hermes_api_key');
+    if (!url) return null;
+    return { url, apiKey: apiKey || '' };
+  }
+
+  async chat(messages: { role: 'system' | 'user' | 'assistant'; content: string }[]): Promise<string> {
+    const config = this.getStoredConfig();
+    if (!config) throw new Error('Hermes non configure. Allez dans Parametres > Agent Hermes.');
+
+    const systemPrompt = `Tu es Hermes, l'assistant IA de gestion d'emails. Tu aides l'utilisateur a :
+- Analyser et categoriser ses emails
+- Rediger des reponses professionnelles
+- Synthetiser l'etat de sa boite mail
+- Identifier les actions urgentes
+- Fournir des recommandations d'archvage ou de delegation
+
+Reponds toujours en francais, de maniere concise et professionnelle.`;
+
+    const allMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages
+    ];
+
+    const response = await fetch(`${config.url}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.apiKey ? { 'Authorization': `Bearer ${config.apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model: 'hermes-agent',
+        messages: allMessages,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hermes API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Pas de reponse.';
+  }
+
   async getEmails(folder = 'INBOX', limit = 50): Promise<HermesEmail[]> {
     if (!this.config) throw new Error('Hermes not configured');
     const res = await fetch(`${this.config.apiUrl}/api/hermes/emails?folder=${folder}&limit=${limit}`);

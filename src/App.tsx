@@ -17,7 +17,7 @@ import { Site } from "./components/Site";
 import { AppState, WSMessage } from "./types";
 import { DEFAULT_STATE } from "./data";
 import { useWebSocket } from "./useWebSocket";
-import { Menu, X, Sparkles, Bot, Mail } from "lucide-react";
+import { hermesConnector } from "./lib/hermes-connector";
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/hermes/ws`;
 
@@ -140,31 +140,20 @@ export default function App() {
     setCopilotLoading(true);
     setCopilotResponse('');
     try {
-      const res = await fetch('/api/mail/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'copilot',
-          message: copilotInput,
-          emails: state.emails.map((e) => ({
-            id: e.id,
-            sender: e.sender,
-            subject: e.subject,
-            body: e.body,
-            date: e.date,
-            category: e.category,
-            urgency: e.urgency || 'moyenne',
-            read: e.read,
-          })),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        await streamText(data.reply);
-        setCopilotResponse(data.reply);
-      }
+      const emailsContext = state.emails.length > 0
+        ? `\n\nContext: L'utilisateur a ${state.emails.length} emails dans sa boite.\n` +
+          state.emails.slice(0, 10).map(e => `- De: ${e.sender}, Sujet: ${e.subject}`).join('\n')
+        : '\n\nContext: La boite mail est vide.';
+
+      const reply = await hermesConnector.chat([
+        { role: 'user', content: copilotInput + emailsContext }
+      ]);
+      
+      await streamText(reply);
+      setCopilotResponse(reply);
     } catch (err) {
-      setCopilotResponse("Désolé, je n'ai pas pu traiter votre demande.");
+      console.error('[Copilot] Error:', err);
+      setCopilotResponse("Desole, je n'ai pas pu traiter votre demande. Verifiez qu'Hermes est connecte dans les Parametres.");
     } finally {
       setCopilotLoading(false);
     }
