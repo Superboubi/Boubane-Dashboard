@@ -66,7 +66,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotInput, setCopilotInput] = useState('');
-  const [copilotResponse, setCopilotResponse] = useState('');
+  const [copilotMessages, setCopilotMessages] = useState<{role: 'user' | 'assistant'; content: string; id: string}[]>([]);
   const [copilotLoading, setCopilotLoading] = useState(false);
 
   const { isConnected, subscribe, send } = useWebSocket(WS_URL);
@@ -148,9 +148,12 @@ export default function App() {
   const handleCopilotSubmit = async () => {
     if (!copilotInput.trim() || copilotLoading) return;
     const inputToSend = copilotInput;
+    const userMsgId = 'msg-' + Date.now();
+    
     setCopilotInput('');
     setCopilotLoading(true);
-    setCopilotResponse('');
+    setCopilotMessages(prev => [...prev, { role: 'user', content: inputToSend, id: userMsgId }]);
+    
     try {
       const emailsContext = state.emails.length > 0
         ? `\n\nContext: L'utilisateur a ${state.emails.length} emails dans sa boite.\n` +
@@ -161,11 +164,14 @@ export default function App() {
         { role: 'user', content: inputToSend + emailsContext }
       ]);
       
-      await streamText(reply);
-      setCopilotResponse(reply);
+      setCopilotMessages(prev => [...prev, { role: 'assistant', content: reply, id: 'msg-' + Date.now() }]);
     } catch (err) {
       console.error('[Copilot] Error:', err);
-      setCopilotResponse("Desole, je n'ai pas pu traiter votre demande. Verifiez qu'Hermes est connecte dans les Parametres.");
+      setCopilotMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "Desole, je n'ai pas pu traiter votre demande. Verifiez qu'Hermes est connecte dans les Parametres.",
+        id: 'msg-' + Date.now() 
+      }]);
     } finally {
       setCopilotLoading(false);
     }
@@ -344,24 +350,46 @@ export default function App() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-              {!copilotResponse && !copilotLoading ? (
+              {copilotMessages.length === 0 && !copilotLoading ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6">
                   <div className="w-12 h-12 rounded-2xl bg-[var(--accent-glow)] text-[var(--accent)] flex items-center justify-center mb-3 animate-float">
                     <Bot className="w-6 h-6" />
                   </div>
                   <p className="text-sm text-[var(--text-muted)] max-w-xs">
-                    Demandez-moi de résumer votre boîte, lister les urgences, ou trouver une opportunité client.
+                    Demandez-moi de resumer votre boite, lister les urgences, ou trouver une opportunite client.
                   </p>
                 </div>
-              ) : copilotLoading && !isStreaming ? (
-                <div className="flex items-center gap-3 p-4">
-                  <div className="w-2 h-2 rounded-full bg-[var(--hermes-amber)] animate-pulse" />
-                  <span className="text-sm text-[var(--text-muted)] font-mono">Hermes réfléchit...</span>
-                </div>
               ) : (
-                <div className="prose prose-sm max-w-none text-[var(--text)] prose-headings:text-[var(--text)] prose-strong:text-[var(--accent)] prose-p:text-[var(--text-muted)] space-y-2">
-                  {renderCopilotActions(isStreaming ? streamedResponse : copilotResponse)}
-                </div>
+                <>
+                  {copilotMessages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-[var(--accent)] text-[var(--bg)] rounded-br-md'
+                            : 'bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text)] rounded-bl-md'
+                        }`}
+                      >
+                        <div className="prose prose-sm max-w-none text-[var(--text)] prose-headings:text-[var(--text)] prose-strong:text-[var(--accent)] prose-p:text-[var(--text-muted)]">
+                          {msg.role === 'assistant' ? renderCopilotActions(msg.content) : msg.content}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {copilotLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl rounded-bl-md px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[var(--hermes-amber)] animate-pulse" />
+                          <span className="text-sm text-[var(--text-muted)] font-mono">Hermes reflechit...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
